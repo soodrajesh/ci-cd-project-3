@@ -67,23 +67,21 @@ pipeline {
                 }
             }
         }
-        
         stage('OWASP DP SCAN') {
             steps {
                 // Run Dependency-Check scan
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
-
-                // Debugging: List contents of the workspace
-                sh 'ls -R ${WORKSPACE}'
-
                 // Archive the generated report
-                archiveArtifacts artifacts: '**/dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
+                archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
             }
         }
 
         stage('Publish HTML Report') {
             steps {
                 script {
+                    // Debugging: List contents of the workspace
+                    sh 'ls -R ${WORKSPACE}'
+
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: false,
@@ -92,81 +90,6 @@ pipeline {
                         reportFiles: 'dependency-check-report.html',
                         reportName: 'OWASP Dependency-Check Report'
                     ])
-                }
-            }
-        }
-        stage('SonarQube Analysis') {
-            steps {
-                withCredentials([string(credentialsId: 'SonarQube', variable: 'SONAR_TOKEN')]) {
-                    script {
-                        // Define SonarQube properties
-                        def sonarProps = "-Dsonar.projectKey=Demo -Dsonar.login=${SONAR_TOKEN}"
-                        // Specify the directory to scan (replace 'src' with your directory)
-                        def scanDirectory = "${WORKSPACE}"
-                        // Specify the file patterns to include (e.g., '*.tf' for Terraform files)
-                        def filePatterns = "**/*.tf"
-                        // Log the directory being scanned
-                        echo "Scanning directory: ${scanDirectory}"
-                        // Run SonarQube analysis
-                        sh "/var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarQube/bin/sonar-scanner -Dsonar.sources=${scanDirectory} -Dsonar.inclusions=${filePatterns} ${sonarProps}"
-                    }
-                }
-            }
-        }
-        stage('Checkov Scan') {
-            steps {
-                script {
-                    sh 'rm -rf *tf.json' 
-                    // Run Checkov scan and capture the output, skipping tf.json
-                    def checkovOutput = sh(script: 'checkov -d . --compact --skip-check $(< skip_checks.txt) ', returnStdout: true).trim()
-                    // Check for failed entries in the output
-                    def failedChecks = checkovOutput.contains('FAILED for resource:')
-                    // Print the output to the Jenkins console
-                    echo "Checkov Scan Output:"
-                    echo checkovOutput
-                    // Throw an error if failedChecks is true
-                    if (failedChecks) {
-                        error 'Checkov scan found failed entries'
-                    }
-                }
-            }
-        }
-        stage('Terraform Plan') {
-            steps {
-                script {
-                    // Additional steps if needed
-                    sh 'terraform plan -out=tfplan -lock=false'
-                }
-            }
-        }
-        stage('Manual Approval') {
-            steps {
-                script {
-                    echo 'Waiting for approval...'
-                    input message: 'Do you want to apply the Terraform plan?',
-                          ok: 'Proceed'
-                }
-            }
-        }
-        stage('Terraform Apply') {
-            steps {
-                script {
-                    // Ensure awsCredentialsId is defined in this scope
-                    def awsCredentialsId
-                    if (env.BRANCH_NAME == 'main') {
-                        awsCredentialsId = 'aws-prod-user'
-                    } else {
-                        awsCredentialsId = 'aws-dev-user'
-                    }
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: awsCredentialsId, accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                        sh 'terraform apply -auto-approve -lock=false tfplan'    
-                    }
-                    // Notify Slack about the successful apply
-                    slackSend(
-                        color: '#36a64f',
-                        message: "Terraform apply successful on branch ${env.BRANCH_NAME}",
-                        channel: SLACK_CHANNEL
-                    )
                 }
             }
         }
