@@ -80,18 +80,30 @@ pipeline {
             }
         }
 
-        stage('OWASP DP SCAN') {
-            steps {
-                // Run Dependency-Check scan
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
+        stage('OWASP Dependency-Check Vulnerabilities') {
+      steps {
+        dependencyCheck additionalArguments: ''' 
+                    -o './'
+                    -s './'
+                    -f 'ALL' 
+                    --prettyPrint''', odcInstallation: 'OWASP'
+        
+        dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+      }
+    }
 
-                // Debugging: List contents of the workspace
-                sh 'ls -R ${WORKSPACE}'
+        // stage('OWASP DP SCAN') {
+        //     steps {
+        //         // Run Dependency-Check scan
+        //         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
 
-                // Archive the generated report
-                archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
-            }
-        }
+        //         // Debugging: List contents of the workspace
+        //         sh 'ls -R ${WORKSPACE}'
+
+        //         // Archive the generated report
+        //         archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
+        //     }
+        // }
 
         // stage('Publish HTML Report') {
         //     steps {
