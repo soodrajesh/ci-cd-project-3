@@ -80,36 +80,36 @@ pipeline {
             }
         }
 
-        stage('OWASP DP SCAN') {
-            steps {
-                // Run Dependency-Check scan
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
+        // stage('OWASP DP SCAN') {
+        //     steps {
+        //         // Run Dependency-Check scan
+        //         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
 
-                // Debugging: List contents of the workspace
-                sh 'ls -R ${WORKSPACE}'
+        //         // Debugging: List contents of the workspace
+        //         sh 'ls -R ${WORKSPACE}'
 
-                // Archive the generated report
-                archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
-            }
-        }
+        //         // Archive the generated report
+        //         archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
+        //     }
+        // }
 
-        stage('Publish HTML Report') {
-            steps {
-                script {
-                    // Debugging: List contents of the workspace
-                    sh 'ls -R ${WORKSPACE}'
+        // stage('Publish HTML Report') {
+        //     steps {
+        //         script {
+        //             // Debugging: List contents of the workspace
+        //             sh 'ls -R ${WORKSPACE}'
 
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: false,
-                        keepAll: true,
-                        reportDir: '.',
-                        reportFiles: 'dependency-check-report.html',
-                        reportName: 'OWASP Dependency-Check Report'
-                    ])
-                }
-            }
-        }
+        //             publishHTML([
+        //                 allowMissing: false,
+        //                 alwaysLinkToLastBuild: false,
+        //                 keepAll: true,
+        //                 reportDir: '.',
+        //                 reportFiles: 'dependency-check-report.html',
+        //                 reportName: 'OWASP Dependency-Check Report'
+        //             ])
+        //         }
+        //     }
+        // }
 
         stage('SonarQube Analysis') {
             steps {
