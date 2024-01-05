@@ -109,7 +109,8 @@ pipeline {
     //   }
     // }
 
-stage('OWASP DP SCAN') {
+
+        stage('OWASP DP SCAN') {
             steps {
                 // Run Dependency-Check scan
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
@@ -118,7 +119,7 @@ stage('OWASP DP SCAN') {
                 sh 'ls -R ${WORKSPACE}'
 
                 // Archive the generated report
-                archiveArtifacts artifacts: '**/dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
+                archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
             }
         }
 
@@ -133,7 +134,7 @@ stage('OWASP DP SCAN') {
                         allowMissing: false,
                         alwaysLinkToLastBuild: false,
                         keepAll: true,
-                        reportDir: '**/',
+                        reportDir: '',
                         reportFiles: 'dependency-check-report.html',
                         reportName: 'OWASP Dependency-Check Report'
                     ])
