@@ -1,6 +1,5 @@
 pipeline {
     agent any
-
     environment {
         DEV_AWS_ACCESS_KEY_ID = credentials('aws-dev-user')
         PROD_AWS_ACCESS_KEY_ID = credentials('aws-prod-user')
@@ -12,7 +11,6 @@ pipeline {
         SONARQUBE_SCANNER_HOME = tool 'SonarQube'
         SNYK_TOKEN = credentials('snyk-token-soodrajesh')
     }
-
     stages {
         stage('Checkout') {
             steps {
@@ -20,7 +18,6 @@ pipeline {
                 checkout scm
             }
         }
-
         stage('Install Checkov') {
             steps {
                 script {
@@ -30,7 +27,6 @@ pipeline {
                 }
             }
         }
-
         stage('Terraform Init') {
             steps {
                 script {
@@ -39,13 +35,11 @@ pipeline {
                 }
             }
         }
-
         stage('Terraform Select Workspace') {
             steps {
                 script {
                     def terraformWorkspace
                     def awsCredentialsId
-
                     if (env.BRANCH_NAME == 'main') {
                         terraformWorkspace = PROD_TF_WORKSPACE
                         awsCredentialsId = 'aws-prod-user'
@@ -53,34 +47,26 @@ pipeline {
                         terraformWorkspace = DEV_TF_WORKSPACE
                         awsCredentialsId = 'aws-dev-user'
                     }
-
                     def awsAccessKeyId
-
                     // Retrieve AWS credentials from Jenkins
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: awsCredentialsId, accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                         awsAccessKeyId = env.AWS_ACCESS_KEY_ID
                     }
-
                     echo "Using AWS credentials:"
                     echo "Credentials ID: ${awsCredentialsId}"
-
                     // Check if the Terraform workspace exists
                     def workspaceExists = sh(script: "terraform workspace list | grep -q ${terraformWorkspace}", returnStatus: true)
-
                     if (workspaceExists == 0) {
                         echo "Terraform workspace '${terraformWorkspace}' exists."
                     } else {
                         echo "Terraform workspace '${terraformWorkspace}' doesn't exist. Creating..."
                         sh "terraform workspace new ${terraformWorkspace}"
                     }
-
                     // Set the Terraform workspace
                     sh "terraform workspace select ${terraformWorkspace}"
                 }
             }
         }
-
-
         // stage('Authenticate Snyk') {
         //     steps {
         //         script {
@@ -88,7 +74,6 @@ pipeline {
         //         }
         //     }
         // }
-
         // stage('Snyk Security Scan') {
         //     steps {
         //         script {
@@ -96,7 +81,6 @@ pipeline {
         //         }
         //     }
         // }
-
     //     stage('OWASP Dependency-Check Vulnerabilities') {
     //   steps {
     //     dependencyCheck additionalArguments: ''' 
@@ -108,48 +92,36 @@ pipeline {
     //     dependencyCheckPublisher pattern: 'dependency-check-report.xml'
     //   }
     // }
-
-
         stage('OWASP DP SCAN') {
             steps {
                 // Run Dependency-Check scan
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
-
-                // Debugging: List contents of the workspace
-                sh 'ls -R ${WORKSPACE}'
-
                 // Archive the generated report
                 archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
             }
         }
 
         stage('Publish HTML Report') {
+        stage('Publish OWASP HTML Report') {
             steps {
                 script {
-                    // Debugging: List contents of the workspace
-                    sh 'ls -R ${WORKSPACE}'
-
-                    // Publish HTML report
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: false,
                         keepAll: true,
-                        reportDir: '',
+                        reportDir: '.',
                         reportFiles: 'dependency-check-report.html',
                         reportName: 'OWASP Dependency-Check Report'
                     ])
                 }
             }
         }
-
-
         // stage('OWASP DP SCAN') {
         //     steps {
         //         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
         //         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
         //     }
         // }
-
         // stage('OWASP Dependency-Check') {
         //             steps {
         //                 script {
@@ -158,16 +130,13 @@ pipeline {
         //                         -s './'
         //                         -f 'ALL' 
         //                         --prettyPrint''', odcInstallation: 'OWASP'
-
         //                     // Archive the generated report
         //                     archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true
-
         //                     // Display a message indicating success
         //                     echo 'OWASP Dependency-Check scan completed.'
                             
         //                     // Log the number of vulnerabilities found
         //                     echo "Number of vulnerabilities found: ${dependencyCheckResult}"
-
         //                     // Do not fail the build even if vulnerabilities are found
         //                     echo 'Continuing with the build regardless of vulnerabilities.'
                             
@@ -178,7 +147,6 @@ pipeline {
         //                 }
         //             }
                 
-
         // stage('View OWASP Report') {
         //     steps {
         //         // Publish Dependency-Check HTML report
@@ -199,52 +167,41 @@ pipeline {
         //             script {
         //                 // Define SonarQube properties
         //                 def sonarProps = "-Dsonar.projectKey=Demo -Dsonar.login=${SONAR_TOKEN}"
-
         //                 // Run SonarQube analysis
         //                 sh "/var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarQube/bin/sonar-scanner ${sonarProps}"
         //             }
         //         }
         //     }
         // }
-
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'SonarQube', variable: 'SONAR_TOKEN')]) {
                     script {
                         // Define SonarQube properties
                         def sonarProps = "-Dsonar.projectKey=Demo -Dsonar.login=${SONAR_TOKEN}"
-
                         // Specify the directory to scan (replace 'src' with your directory)
                         def scanDirectory = "${WORKSPACE}"
-
                         // Specify the file patterns to include (e.g., '*.tf' for Terraform files)
                         def filePatterns = "**/*.tf"
-
                         // Log the directory being scanned
                         echo "Scanning directory: ${scanDirectory}"
-
                         // Run SonarQube analysis
                         sh "/var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarQube/bin/sonar-scanner -Dsonar.sources=${scanDirectory} -Dsonar.inclusions=${filePatterns} ${sonarProps}"
                     }
                 }
             }
         }
-
-
         stage('Checkov Scan') {
             steps {
                 script {
                     sh 'rm -rf *tf.json' 
                     // Run Checkov scan and capture the output, skipping tf.json
                     def checkovOutput = sh(script: 'checkov -d . --compact --skip-check $(< skip_checks.txt) ', returnStdout: true).trim()
-
                     // Check for failed entries in the output
                     def failedChecks = checkovOutput.contains('FAILED for resource:')
-
                     // Print the output to the Jenkins console
                     echo "Checkov Scan Output:"
                     echo checkovOutput
-
                     // Throw an error if failedChecks is true
                     if (failedChecks) {
                         error 'Checkov scan found failed entries'
@@ -252,7 +209,6 @@ pipeline {
                 }
             }
         }
-
         stage('Terraform Plan') {
             steps {
                 script {
@@ -271,35 +227,29 @@ pipeline {
                 }
             }
         }
-
         stage('Terraform Apply') {
             steps {
                 script {
                     // Ensure awsCredentialsId is defined in this scope
                     def awsCredentialsId
-
                     if (env.BRANCH_NAME == 'main') {
                         awsCredentialsId = 'aws-prod-user'
                     } else {
                         awsCredentialsId = 'aws-dev-user'
                     }
-
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: awsCredentialsId, accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                         sh 'terraform apply -auto-approve -lock=false tfplan'    
                     }
-
                     // Notify Slack about the successful apply
                     slackSend(
                         color: '#36a64f',
                         message: "Terraform apply successful on branch ${env.BRANCH_NAME}",
                         channel: SLACK_CHANNEL
                     )
-
                 }
             }
         }
     }
-
 post {
     always {
         // Notification for every build completion
@@ -314,7 +264,6 @@ post {
             channel: SLACK_CHANNEL
         )
     }
-
     failure {
         // Notification for build failure
         slackSend(
@@ -323,7 +272,6 @@ post {
             channel: SLACK_CHANNEL
         )
     }
-
     unstable {
         // Notification for unstable build
         slackSend(
@@ -332,7 +280,6 @@ post {
             channel: SLACK_CHANNEL
         )
     }
-
     aborted {
         // Notification for aborted build
         slackSend(
