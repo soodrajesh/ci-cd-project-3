@@ -1,4 +1,4 @@
-# Ci/CD Pipline using Jenkins and Terraform
+# CI/CD Pipline using Jenkins and Terraform
 
 This Jenkins pipeline automates the deployment of Terraform infrastructure, incorporating security checks and reporting.
 
