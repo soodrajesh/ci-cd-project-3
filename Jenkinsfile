@@ -80,18 +80,18 @@ pipeline {
             }
         }
 
-        // stage('OWASP DP SCAN') {
-        //     steps {
-        //         // Run Dependency-Check scan
-        //         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
+        stage('OWASP DP SCAN') {
+            steps {
+                // Run Dependency-Check scan
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'OWASP'
 
-        //         // Debugging: List contents of the workspace
-        //         sh 'ls -R ${WORKSPACE}'
+                // Debugging: List contents of the workspace
+                sh 'ls -R ${WORKSPACE}'
 
-        //         // Archive the generated report
-        //         archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
-        //     }
-        // }
+                // Archive the generated report
+                archiveArtifacts artifacts: 'dependency-check-report.html', fingerprint: true, onlyIfSuccessful: true
+            }
+        }
 
         // stage('Publish HTML Report') {
         //     steps {
